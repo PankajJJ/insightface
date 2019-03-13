@@ -5,9 +5,9 @@ from __future__ import print_function
 import sys
 import os
 
-import sklearn
 import numpy as np
 import mxnet as mx
+from sklearn import preprocessing
 
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src', 'common'))
@@ -53,5 +53,5 @@ class FaceModel:
         db = mx.io.DataBatch(data=(data,))
         self.model.forward(db, is_train=False)
         embeddings = self.model.get_outputs()[0].asnumpy()
-        embeddings = sklearn.preprocessing.normalize(embeddings, axis=0)
+        embeddings = preprocessing.normalize(embeddings, axis=0)
         return embeddings
