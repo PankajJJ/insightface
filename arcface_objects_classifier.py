@@ -100,7 +100,7 @@ if __name__ == '__main__':
         if i.meta == j.label
     )
     n_test_objs = len(test_image_bbox_objs)
-    print("accuracy = %s (%s / %s)" % (correct_count/n_test_objs), correct_count, n_test_objs)
+    print("accuracy = %s (%s / %s)" % (correct_count/n_test_objs, correct_count, n_test_objs))
 
     ImageHandler.draw_bbox(train_image_obj.pil_image_obj, register_image_bbox_objs)
     ImageHandler.save(train_image_obj.pil_image_obj, "detected_image/drawn_image_1.jpg")
