@@ -66,6 +66,7 @@ if __name__ == '__main__':
 
     objs = image_obj.fetch_bbox_pil_objs(register_image_bbox_objs)
     objects_frame = resize_and_stack_image_objs((112, 112), objs)
+    objects_frame = np.transpose(objects_frame, (0, 3, 1, 2))
     registered_ids = [i.meta for i in register_image_bbox_objs]
 
     arcface_classifier = ArcFaceClassifier(args, objects_frame, registered_ids)
