@@ -40,7 +40,7 @@ class ArcFaceClassifier(ObjectClassifier):
             x1, y1, x2, y2, _, _, _ = bbox
             label = self.registered_ids[detected_idx[idx]]
             score = similar_matrix[idx, detected_idx[idx]]
-            result_objects.append(BoundedBoxObject(x1, y1, x2, y2, label, score))
+            result_objects.append(BoundedBoxObject(x1, y1, x2, y2, label, score, ''))
 
         image_dict = {
             'image_id': image_obj.image_id,
@@ -94,5 +94,8 @@ if __name__ == '__main__':
     with SimpleTimer("Predicting image with classifier"):
         detection_result = arcface_classifier.detect(image_obj_2, test_image_bbox_objs)
     print("detected %s objects" % len(detection_result.detected_objects))
+    ImageHandler.draw_bbox(image_obj.pil_image_obj, register_image_bbox_objs)
+    ImageHandler.save(image_obj.pil_image_obj, "detected_image/drawn_image_1.jpg")
+
     ImageHandler.draw_bbox(image_obj_2.pil_image_obj, detection_result.detected_objects)
     ImageHandler.save(image_obj_2.pil_image_obj, "detected_image/drawn_image_2.jpg")
