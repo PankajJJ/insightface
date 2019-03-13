@@ -81,6 +81,7 @@ if __name__ == '__main__':
     raw_image_path = 'demo/183club/test_image2.jpg'
     image_id_2 = ImageId(channel='demo', timestamp=arrow.now().timestamp, file_format='jpg')
     image_obj_2 = Image(image_id_2, raw_image_path=raw_image_path)
+    arcface_classifier.detect(image_obj_2, test_image_bbox_objs)
 
 
     # img = cv2.imread('deploy/Tom_Hanks_54745.png')
