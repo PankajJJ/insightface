@@ -5,8 +5,10 @@ import numpy as np
 from eyewitness.config import BoundedBoxObject
 from eyewitness.image_utils import resize_and_stack_image_objs
 from eyewitness.image_id import ImageId
-from eyewitness.image_utils import Image
+from eyewitness.image_utils import ImageHandler, Image
 from eyewitness.object_classifier import ObjectClassifier
+from eyewitness.detection_utils import DetectionResult
+from bistiming import SimpleTimer
 
 from deploy import face_model
 
@@ -31,17 +33,24 @@ class ArcFaceClassifier(ObjectClassifier):
 
         objects_frame = np.transpose(objects_frame, (0, 3, 1, 2))
         objects_embedding = self.model.get_faces_feature(objects_frame)
+        similar_matrix = objects_embedding.dot(self.registed_images.T)
+        detected_idx = similar_matrix.argmax(1)
+        result_objects = []
+        for idx, bbox in enumerate(bbox_objs):
+            x1, y1, x2, y2, _, _, _ = bbox
+            label = self.registered_ids[detected_idx[idx]]
+            score = similar_matrix[idx, detected_idx[idx]]
+            result_objects.append(BoundedBoxObject(x1, y1, x2, y2, label, score))
 
-        # TODO: recognize faces for each bbox
-        # image_dict = {
-        #     'image_id': image_obj.image_id,
-        #     'detected_objects': detected_objects,
-        # }
-        # detection_result = DetectionResult(image_dict)
+        image_dict = {
+            'image_id': image_obj.image_id,
+            'detected_objects': result_objects,
+        }
+        detection_result = DetectionResult(image_dict)
+        return detection_result
 
     def valid_labels(self):
-        # TODO: return valid items
-        pass
+        return set(self.registered_ids)
 
 
 if __name__ == '__main__':
@@ -57,17 +66,17 @@ if __name__ == '__main__':
     image_obj = Image(image_id, raw_image_path=raw_image_path)
 
     register_image_bbox_objs = [
-        BoundedBoxObject(x1=347, y1=138, x2=396, y2=202, label='face', score=1, meta='5'),
-        BoundedBoxObject(x1=230, y1=157, x2=279, y2=224, label='face', score=1, meta='4'),
-        BoundedBoxObject(x1=705, y1=138, x2=753, y2=209, label='face', score=1, meta='3'),
-        BoundedBoxObject(x1=540, y1=152, x2=587, y2=210, label='face', score=1, meta='2'),
-        BoundedBoxObject(x1=73.0, y1=162, x2=124, y2=232, label='face', score=1, meta='1')
+        BoundedBoxObject(x1=347, y1=138, x2=396, y2=202, label='5', score=1, meta=''),
+        BoundedBoxObject(x1=230, y1=157, x2=279, y2=224, label='4', score=1, meta=''),
+        BoundedBoxObject(x1=705, y1=138, x2=753, y2=209, label='3', score=1, meta=''),
+        BoundedBoxObject(x1=540, y1=152, x2=587, y2=210, label='2', score=1, meta=''),
+        BoundedBoxObject(x1=73.0, y1=162, x2=124, y2=232, label='1', score=1, meta='')
     ]
 
     objs = image_obj.fetch_bbox_pil_objs(register_image_bbox_objs)
     objects_frame = resize_and_stack_image_objs((112, 112), objs)
     objects_frame = np.transpose(objects_frame, (0, 3, 1, 2))
-    registered_ids = [i.meta for i in register_image_bbox_objs]
+    registered_ids = [i.label for i in register_image_bbox_objs]
 
     arcface_classifier = ArcFaceClassifier(args, objects_frame, registered_ids)
 
@@ -81,11 +90,9 @@ if __name__ == '__main__':
     raw_image_path = 'demo/183club/test_image2.jpg'
     image_id_2 = ImageId(channel='demo', timestamp=arrow.now().timestamp, file_format='jpg')
     image_obj_2 = Image(image_id_2, raw_image_path=raw_image_path)
-    arcface_classifier.detect(image_obj_2, test_image_bbox_objs)
 
-
-    # img = cv2.imread('deploy/Tom_Hanks_54745.png')
-    # model = face_model.FaceModel(args)
-    # img = model.get_input(img)
-    # f1 = model.get_feature(img)
-    # print(f1[0:10])
+    with SimpleTimer("Predicting image with classifier"):
+        detection_result = arcface_classifier.detect(image_obj_2, test_image_bbox_objs)
+    print("detected %s objects" % len(detection_result.detected_objects))
+    ImageHandler.draw_bbox(image_obj_2.pil_image_obj, detection_result.detected_objects)
+    ImageHandler.save(image_obj_2.pil_image_obj, "detected_image/drawn_image_2.jpg")
