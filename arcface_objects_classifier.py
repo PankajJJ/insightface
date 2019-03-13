@@ -62,8 +62,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     raw_image_path = 'demo/183club/test_image.jpg'
-    image_id = ImageId(channel='demo', timestamp=arrow.now().timestamp, file_format='jpg')
-    image_obj = Image(image_id, raw_image_path=raw_image_path)
+    train_image_id = ImageId(channel='demo', timestamp=arrow.now().timestamp, file_format='jpg')
+    train_image_obj = Image(train_image_id, raw_image_path=raw_image_path)
 
     register_image_bbox_objs = [
         BoundedBoxObject(x1=347, y1=138, x2=396, y2=202, label='5', score=1, meta=''),
@@ -73,7 +73,7 @@ if __name__ == '__main__':
         BoundedBoxObject(x1=73.0, y1=162, x2=124, y2=232, label='1', score=1, meta='')
     ]
 
-    objs = image_obj.fetch_bbox_pil_objs(register_image_bbox_objs)
+    objs = train_image_obj.fetch_bbox_pil_objs(register_image_bbox_objs)
     objects_frame = resize_and_stack_image_objs((112, 112), objs)
     objects_frame = np.transpose(objects_frame, (0, 3, 1, 2))
     registered_ids = [i.label for i in register_image_bbox_objs]
@@ -82,20 +82,28 @@ if __name__ == '__main__':
 
     test_image_bbox_objs = [
         BoundedBoxObject(x1=367, y1=101, x2=412, y2=160, label='face', score=1, meta='1'),
-        BoundedBoxObject(x1=311, y1=176, x2=364, y2=248, label='face', score=1, meta='2'),
-        BoundedBoxObject(x1=114, y1=80, x2=165, y2=148, label='face', score=1, meta='5'),
-        BoundedBoxObject(x1=219, y1=40, x2=272, y2=107, label='face', score=1, meta='3'),
-        BoundedBoxObject(x1=159, y1=191, x2=212, y2=259, label='face', score=1, meta='4')
+        BoundedBoxObject(x1=311, y1=176, x2=364, y2=248, label='face', score=1, meta='4'),
+        BoundedBoxObject(x1=114, y1=80, x2=165, y2=148, label='face', score=1, meta='3'),
+        BoundedBoxObject(x1=219, y1=40, x2=272, y2=107, label='face', score=1, meta='5'),
+        BoundedBoxObject(x1=159, y1=191, x2=212, y2=259, label='face', score=1, meta='2')
     ]
     raw_image_path = 'demo/183club/test_image2.jpg'
-    image_id_2 = ImageId(channel='demo', timestamp=arrow.now().timestamp, file_format='jpg')
-    image_obj_2 = Image(image_id_2, raw_image_path=raw_image_path)
+    test_image_id = ImageId(channel='demo', timestamp=arrow.now().timestamp, file_format='jpg')
+    test_image_obj = Image(test_image_id, raw_image_path=raw_image_path)
 
     with SimpleTimer("Predicting image with classifier"):
-        detection_result = arcface_classifier.detect(image_obj_2, test_image_bbox_objs)
-    print("detected %s objects" % len(detection_result.detected_objects))
-    ImageHandler.draw_bbox(image_obj.pil_image_obj, register_image_bbox_objs)
-    ImageHandler.save(image_obj.pil_image_obj, "detected_image/drawn_image_1.jpg")
+        detection_result = arcface_classifier.detect(test_image_obj, test_image_bbox_objs)
 
-    ImageHandler.draw_bbox(image_obj_2.pil_image_obj, detection_result.detected_objects)
-    ImageHandler.save(image_obj_2.pil_image_obj, "detected_image/drawn_image_2.jpg")
+    print("detected %s objects" % len(detection_result.detected_objects))
+    correct_count = sum(
+        1 for i, j in zip(test_image_bbox_objs, detection_result.detected_objects)
+        if i.meta == j.label
+    )
+    n_test_objs = len(test_image_bbox_objs)
+    print("accuracy = %s (%s / %s)" % (correct_count/n_test_objs), correct_count, n_test_objs)
+
+    ImageHandler.draw_bbox(train_image_obj.pil_image_obj, register_image_bbox_objs)
+    ImageHandler.save(train_image_obj.pil_image_obj, "detected_image/drawn_image_1.jpg")
+
+    ImageHandler.draw_bbox(test_image_obj.pil_image_obj, detection_result.detected_objects)
+    ImageHandler.save(test_image_obj.pil_image_obj, "detected_image/drawn_image_2.jpg")
