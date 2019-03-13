@@ -15,7 +15,7 @@ class ArcFaceClassifier(ObjectClassifier):
     def __init__(self, args):
         self.model = face_model.FaceModel(args)
         self.image_size = [int(i) for i in args.image_size.split(',')]
-        # TODO: forward images and regist images
+        # TODO: forward images and register images
 
     def detect(self, image_obj, bbox_objs=None):
         if bbox_objs:
@@ -27,6 +27,9 @@ class ArcFaceClassifier(ObjectClassifier):
             # resize and extend the size
             objects_frame = np.array(image_obj.pil_image_obj.resize(self.image_size))
             objects_frame = np.expand_dims(objects_frame, axis=0)
+
+        objects_frame = np.transpose(objects_frame, (0, 3, 1, 2))
+        objects_embedding = self.model.get_faces_feature(objects_frame)
 
         # TODO: recognize faces for each bbox
         # image_dict = {

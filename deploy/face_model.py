@@ -52,6 +52,6 @@ class FaceModel:
         data = mx.nd.array(faces_frame)
         db = mx.io.DataBatch(data=(data,))
         self.model.forward(db, is_train=False)
-        embeddings = self.model.get_outputs().asnumpy()
+        embeddings = self.model.get_outputs()[0].asnumpy()
         embeddings = sklearn.preprocessing.normalize(embeddings, axis=0)
         return embeddings
