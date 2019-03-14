@@ -80,7 +80,8 @@ class ArcFaceClassifier(ObjectClassifier):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='face model test')
     parser.add_argument('--image-size', default='112,112', help='')
-    parser.add_argument('--model', default='', help='path to load model.')
+    parser.add_argument('--model', default='models/model-r100-ii/model,0',
+                        help='path to load model.')
     parser.add_argument('--gpu', default=0, type=int, help='gpu id')
 
     args = parser.parse_args()
@@ -90,11 +91,11 @@ if __name__ == '__main__':
     train_image_obj = Image(train_image_id, raw_image_path=raw_image_path)
 
     register_image_bbox_objs = [
-        BoundedBoxObject(x1=347, y1=138, x2=396, y2=202, label='5', score=1, meta=''),
-        BoundedBoxObject(x1=230, y1=157, x2=279, y2=224, label='4', score=1, meta=''),
-        BoundedBoxObject(x1=705, y1=138, x2=753, y2=209, label='3', score=1, meta=''),
-        BoundedBoxObject(x1=540, y1=152, x2=587, y2=210, label='2', score=1, meta=''),
-        BoundedBoxObject(x1=73.0, y1=162, x2=124, y2=232, label='1', score=1, meta='')
+        BoundedBoxObject(x1=73, y1=162, x2=124, y2=232, label='1', score=1, meta=''),
+        BoundedBoxObject(x1=230, y1=157, x2=279, y2=224, label='2', score=1, meta=''),
+        BoundedBoxObject(x1=347, y1=138, x2=396, y2=202, label='3', score=1, meta=''),
+        BoundedBoxObject(x1=540, y1=152, x2=587, y2=210, label='4', score=1, meta=''),
+        BoundedBoxObject(x1=705, y1=138, x2=753, y2=209, label='5', score=1, meta=''),
     ]
 
     objs = train_image_obj.fetch_bbox_pil_objs(register_image_bbox_objs)
