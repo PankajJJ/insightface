@@ -66,12 +66,12 @@ class ArcFaceClassifier(ObjectClassifier):
 
     def store_embedding_info(self, pkl_path):
         with open(pkl_path, 'wb') as f:
-            pickle.dumps((self.registered_images_embedding, self.registered_ids), file=f)
+            pickle.dump((self.registered_images_embedding, self.registered_ids), file=f)
 
     @staticmethod
     def restore_embedding_info(pkl_path):
         with open(pkl_path, 'rb') as f:
-            return pickle.loads(f)
+            return pickle.load(f)
 
 
 if __name__ == '__main__':
