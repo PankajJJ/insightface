@@ -1,5 +1,6 @@
 import argparse
 import pickle
+import logging
 
 import arrow
 import numpy as np
@@ -13,6 +14,8 @@ from bistiming import SimpleTimer
 
 from deploy import face_model
 
+LOG = logging.getLogger(__name__)
+
 
 class ArcFaceClassifier(ObjectClassifier):
     def __init__(self, args, registered_ids,
@@ -25,7 +28,7 @@ class ArcFaceClassifier(ObjectClassifier):
             self.registered_images_embedding = registered_images_embedding
         else:
             self.registered_images_embedding = self.model.get_faces_feature(objects_frame)
-
+        LOG.info("registered_images_embedding shape: %s", self.registered_images_embedding.shape)
         self.registered_ids = registered_ids
         self.threshold = threshold
         self.unknown = 'unknown'
@@ -130,5 +133,5 @@ if __name__ == '__main__':
     ImageHandler.save(test_image_obj.pil_image_obj, "detected_image/drawn_image_2.jpg")
 
     arcface_classifier.store_embedding_info('183_model.pkl')
-    embedding, ids = ArcFaceClassifier.restore_embedding_info('183_model.pkl')
-    print(embedding.shape)
+    embedding, _ = ArcFaceClassifier.restore_embedding_info('183_model.pkl')
+    print("restored embedding shape", embedding.shape)
