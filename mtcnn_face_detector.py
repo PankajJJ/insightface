@@ -24,7 +24,6 @@ class MtcnnFaceDetector(ObjectDetector):
         detected_objects = []
         frame = swap_channel_rgb_bgr(np.array(image_obj.pil_image_obj))
         ret = self.face_detector.detect_face(frame, det_type=0)
-        ret = self.face_detector.detect_face_limited(frame, det_type=0)
         bbox, _ = ret
 
         # boundingboxes shape n, 5
