@@ -8,6 +8,7 @@ from eyewitness.detection_utils import DetectionResult
 from eyewitness.object_detector import ObjectDetector
 from eyewitness.image_utils import swap_channel_rgb_bgr, Image
 from eyewitness.image_id import ImageId
+from bistiming import SimpleTimer
 
 from deploy.mtcnn_detector import MtcnnDetector
 
@@ -22,7 +23,7 @@ class MtcnnFaceDetector(ObjectDetector):
     def detect(self, image_obj):
         detected_objects = []
         frame = swap_channel_rgb_bgr(np.array(image_obj.pil_image_obj))
-        ret = self.detector.detect_face(frame, det_type=0)
+        ret = self.face_detector.detect_face(frame, det_type=0)
         bbox, points = ret
 
         # boundingboxes, points = detect_face(
@@ -55,7 +56,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     ctx = mx.gpu(args.gpu)
-    face_detector = MtcnnFaceDetector(args.mtcnn_path, args.gpu)
+    model_name = 'MTCNN'
+    with SimpleTimer("Loading model %s" % model_name):
+        face_detector = MtcnnFaceDetector(args.mtcnn_path, ctx)
 
     raw_image_path = 'demo/183club/test_image.jpg'
     train_image_id = ImageId(channel='demo', timestamp=arrow.now().timestamp, file_format='jpg')
