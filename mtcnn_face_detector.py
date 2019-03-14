@@ -45,7 +45,7 @@ class MtcnnFaceDetector(ObjectDetector):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='face model test')
-    parser.add_argument('--mtcnn_path', default='./deploy/mtcnn-model/',
+    parser.add_argument('--mtcnn_path', default='deploy/mtcnn-model/',
                         help='path to load model.')
     parser.add_argument('--gpu', default=0, type=int, help='gpu id')
 

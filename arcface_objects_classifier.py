@@ -128,10 +128,10 @@ if __name__ == '__main__':
     print("accuracy = %s (%s / %s)" % (correct_count/n_test_objs, correct_count, n_test_objs))
 
     ImageHandler.draw_bbox(train_image_obj.pil_image_obj, register_image_bbox_objs)
-    ImageHandler.save(train_image_obj.pil_image_obj, "detected_image/drawn_image_1.jpg")
+    ImageHandler.save(train_image_obj.pil_image_obj, "detected_image/183club/drawn_image_1.jpg")
 
     ImageHandler.draw_bbox(test_image_obj.pil_image_obj, detection_result.detected_objects)
-    ImageHandler.save(test_image_obj.pil_image_obj, "detected_image/drawn_image_2.jpg")
+    ImageHandler.save(test_image_obj.pil_image_obj, "detected_image/183club/drawn_image_2.jpg")
 
     arcface_classifier.store_embedding_info('183_model.pkl')
     embedding, _ = ArcFaceClassifier.restore_embedding_info('183_model.pkl')

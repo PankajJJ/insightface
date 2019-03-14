@@ -14,7 +14,7 @@ from mtcnn_face_detector import MtcnnFaceDetector
 parser = argparse.ArgumentParser(description='face model test')
 parser.add_argument('--image-size', default='112,112', help='')
 parser.add_argument('--model', default='models/model-r100-ii/model,0', help='')
-parser.add_argument('--mtcnn_path', default='./deploy/mtcnn-model/',
+parser.add_argument('--mtcnn_path', default='deploy/mtcnn-model/',
                     help='path to load model.')
 parser.add_argument('--gpu', default=0, type=int, help='gpu id')
 
@@ -57,7 +57,7 @@ if __name__ == '__main__':
             test_image_obj, face_detection_result.detected_objects)
 
     ImageHandler.draw_bbox(train_image_obj.pil_image_obj, register_image_bbox_objs)
-    ImageHandler.save(train_image_obj.pil_image_obj, "detected_image/drawn_image_1.jpg")
+    ImageHandler.save(train_image_obj.pil_image_obj, "detected_image/183club/drawn_image_1.jpg")
 
     ImageHandler.draw_bbox(test_image_obj.pil_image_obj, detection_result.detected_objects)
-    ImageHandler.save(test_image_obj.pil_image_obj, "detected_image/drawn_image_2.jpg")
+    ImageHandler.save(test_image_obj.pil_image_obj, "detected_image/183club/drawn_image_2.jpg")
