@@ -21,7 +21,10 @@ parser.add_argument('--gpu', default=0, type=int, help='gpu id')
 if __name__ == '__main__':
     args = parser.parse_args()
 
-    ctx = mx.gpu(args.gpu)
+    if args.gpu > 0:
+        ctx = mx.gpu(args.gpu)
+    else:
+        ctx = mx.cpu(0)
     model_name = 'MTCNN'
     with SimpleTimer("Loading model %s" % model_name):
         face_detector = MtcnnFaceDetector(args.mtcnn_path, ctx)
