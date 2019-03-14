@@ -106,11 +106,11 @@ if __name__ == '__main__':
     arcface_classifier = ArcFaceClassifier(args, registered_ids, objects_frame=objects_frame)
 
     test_image_bbox_objs = [
+        BoundedBoxObject(x1=114, y1=80, x2=165, y2=148, label='face', score=1, meta='5'),
+        BoundedBoxObject(x1=159, y1=191, x2=212, y2=259, label='face', score=1, meta='4'),
+        BoundedBoxObject(x1=219, y1=40, x2=272, y2=107, label='face', score=1, meta='3'),
+        BoundedBoxObject(x1=311, y1=176, x2=364, y2=248, label='face', score=1, meta='2'),
         BoundedBoxObject(x1=367, y1=101, x2=412, y2=160, label='face', score=1, meta='1'),
-        BoundedBoxObject(x1=311, y1=176, x2=364, y2=248, label='face', score=1, meta='4'),
-        BoundedBoxObject(x1=114, y1=80, x2=165, y2=148, label='face', score=1, meta='3'),
-        BoundedBoxObject(x1=219, y1=40, x2=272, y2=107, label='face', score=1, meta='5'),
-        BoundedBoxObject(x1=159, y1=191, x2=212, y2=259, label='face', score=1, meta='2')
     ]
     raw_image_path = 'demo/183club/test_image2.jpg'
     test_image_id = ImageId(channel='demo', timestamp=arrow.now().timestamp, file_format='jpg')
