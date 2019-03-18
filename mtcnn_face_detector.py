@@ -24,12 +24,13 @@ class MtcnnFaceDetector(ObjectDetector):
         detected_objects = []
         frame = swap_channel_rgb_bgr(np.array(image_obj.pil_image_obj))
         ret = self.face_detector.detect_face(frame, det_type=0)
-        bbox, _ = ret
+        if ret:
+            bbox, _ = ret
 
-        # boundingboxes shape n, 5
-        for idx in range(bbox.shape[0]):
-            x1, y1, x2, y2, score = bbox[idx]
-            detected_objects.append(BoundedBoxObject(x1, y1, x2, y2, 'face', score, ''))
+            # boundingboxes shape n, 5
+            for idx in range(bbox.shape[0]):
+                x1, y1, x2, y2, score = bbox[idx]
+                detected_objects.append(BoundedBoxObject(x1, y1, x2, y2, 'face', score, ''))
 
         image_dict = {
             'image_id': image_obj.image_id,
