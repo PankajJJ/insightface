@@ -24,7 +24,7 @@ class ArcFaceClassifier(ObjectClassifier):
         assert objects_frame is not None or registered_images_embedding is not None
         self.model = face_model.FaceModel(args)
         self.image_size = [int(i) for i in args.image_size.split(',')]
-        if registered_images_embedding:
+        if registered_images_embedding is not None:
             self.registered_images_embedding = registered_images_embedding
         else:
             self.registered_images_embedding = self.model.get_faces_feature(objects_frame)
