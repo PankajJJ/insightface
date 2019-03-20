@@ -26,6 +26,8 @@ if __name__ == '__main__':
                         help='pre-generated arcgace embedding')
     parser.add_argument('--demo_image', default='demo/183club/test_image2.jpg',
                         help='dataset used to registered')
+    parser.add_argument('--store_embedding_path', default='face.pkl',
+                        help='dataset used to registered')
 
     args = parser.parse_args()
 
@@ -49,15 +51,15 @@ if __name__ == '__main__':
             if len(image_bbox_objs) != 1:
                 continue
             objs += image_obj.fetch_bbox_pil_objs(image_bbox_objs)
-            registered_ids += [image_obj.image_id.channel]
+            registered_ids += [bbox.label for bbox in image_bbox_objs]
 
         objects_frame = resize_and_stack_image_objs((112, 112), objs)
         print(objects_frame.shape)
         objects_frame = np.transpose(objects_frame, (0, 3, 1, 2))
 
         arcface_classifier = ArcFaceClassifier(args, registered_ids, objects_frame=objects_frame)
-        arcface_classifier.store_embedding_info('faces.pkl')
-        embedding, _ = ArcFaceClassifier.restore_embedding_info('faces.pkl')
+        arcface_classifier.store_embedding_info(args.store_embedding_path)
+        embedding, _ = ArcFaceClassifier.restore_embedding_info(args.store_embedding_path)
         print("restored embedding shape", embedding.shape)
     else:
         embedding, registered_ids = ArcFaceClassifier.restore_embedding_info(args.preload_model)
