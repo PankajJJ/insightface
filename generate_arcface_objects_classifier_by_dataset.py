@@ -26,6 +26,8 @@ if __name__ == '__main__':
                         help='pre-generated arcgace embedding')
     parser.add_argument('--demo_image', default='demo/183club/test_image2.jpg',
                         help='dataset used to registered')
+    parser.add_argument('--drawn_image_path', default='detected_image/demo.jpg',
+                        help='the image output path with drawn the detection result')
     parser.add_argument('--store_embedding_path', default='face.pkl',
                         help='dataset used to registered')
 
@@ -74,5 +76,6 @@ if __name__ == '__main__':
             detection_result = arcface_classifier.detect(
                 test_image_obj, face_detection_result.detected_objects)
 
-        ImageHandler.draw_bbox(test_image_obj.pil_image_obj, detection_result.detected_objects)
-        ImageHandler.save(test_image_obj.pil_image_obj, "detected_image/demo.jpg")
+        if args.drawn_image_path:
+            ImageHandler.draw_bbox(test_image_obj.pil_image_obj, detection_result.detected_objects)
+            ImageHandler.save(test_image_obj.pil_image_obj, args.drawn_image_path)
