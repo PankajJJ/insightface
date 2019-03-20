@@ -48,8 +48,6 @@ if __name__ == '__main__':
         image_id2_objs = dict(faces_dataset.ground_truth_iterator(testing_set_only=False))
         for image_obj in faces_dataset.image_obj_iterator(testing_set_only=False):
             image_bbox_objs = image_id2_objs.get(image_obj.image_id, [])
-            if len(image_bbox_objs) != 1:
-                continue
             objs += image_obj.fetch_bbox_pil_objs(image_bbox_objs)
             registered_ids += [bbox.label for bbox in image_bbox_objs]
 

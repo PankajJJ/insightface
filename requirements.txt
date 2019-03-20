@@ -5,4 +5,4 @@ sklearn
 easydict
 scikit-image
 bistiming
-eyewitness==1.0.5
+eyewitness==1.0.6
