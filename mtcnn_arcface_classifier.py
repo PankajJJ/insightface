@@ -31,20 +31,12 @@ class MtcnnArcFaceClassifier(ObjectDetector):
             args, registered_ids, registered_images_embedding=embedding)
 
     def detect(self, image_obj):
-        detected_objects = []
-
         with SimpleTimer("Detect face with mtcnn"):
             face_detection_result = self.face_detector.detect(image_obj)
 
         with SimpleTimer("classify faces with arcface"):
             detection_result = self.arcface_classifier.detect(
                 image_obj, face_detection_result.detected_objects)
-
-        image_dict = {
-            'image_id': image_obj.image_id,
-            'detected_objects': detected_objects,
-        }
-        detection_result = DetectionResult(image_dict)
         return detection_result
 
     @property
