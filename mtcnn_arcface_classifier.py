@@ -26,7 +26,7 @@ class MtcnnArcFaceClassifier(ObjectDetector):
         embedding, registered_ids = ArcFaceClassifier.restore_embedding_info(
             args.dataset_embedding_path)
 
-        self.valid_labels = set(i for i in registered_ids)
+        self.registered_ids = registered_ids
         self.arcface_classifier = ArcFaceClassifier(
             args, registered_ids, registered_images_embedding=embedding)
 
@@ -49,7 +49,7 @@ class MtcnnArcFaceClassifier(ObjectDetector):
 
     @property
     def valid_labels(self):
-        return self.valid_labels
+        return set(i for i in self.registered_ids)
 
 
 if __name__ == '__main__':
