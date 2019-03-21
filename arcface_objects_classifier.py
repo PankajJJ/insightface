@@ -87,7 +87,7 @@ def generate_dataset_arcface_embedding(args, dataset, output_path):
         registered_ids += [bbox.label for bbox in image_bbox_objs]
 
     objects_frame = resize_and_stack_image_objs((112, 112), objs)
-    print("object_frame shape: %s" % objects_frame.shape)
+    print("object_frame shape:", objects_frame.shape)
     objects_frame = np.transpose(objects_frame, (0, 3, 1, 2))
     with SimpleTimer("extracting embedding for dataset %s" % (dataset.dataset_name)):
         arcface_classifier = ArcFaceClassifier(args, registered_ids, objects_frame=objects_frame)

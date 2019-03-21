@@ -49,7 +49,8 @@ if __name__ == '__main__':
             args.dataset_embedding_path)
         print("restored embedding shape", embedding.shape)
     else:
-        embedding, registered_ids = ArcFaceClassifier.restore_embedding_info(args.preload_model)
+        embedding, registered_ids = ArcFaceClassifier.restore_embedding_info(
+            args.dataset_embedding_path)
 
     arcface_classifier = ArcFaceClassifier(args, registered_ids,
                                            registered_images_embedding=embedding)
