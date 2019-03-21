@@ -77,6 +77,25 @@ class ArcFaceClassifier(ObjectClassifier):
             return pickle.load(f)
 
 
+def generate_dataset_arcface_embedding(args, dataset, output_path):
+    objs = []
+    registered_ids = []
+    image_id2_objs = dict(dataset.ground_truth_iterator(testing_set_only=False))
+    for image_obj in dataset.image_obj_iterator(testing_set_only=False):
+        image_bbox_objs = image_id2_objs.get(image_obj.image_id, [])
+        objs += image_obj.fetch_bbox_pil_objs(image_bbox_objs)
+        registered_ids += [bbox.label for bbox in image_bbox_objs]
+
+    objects_frame = resize_and_stack_image_objs((112, 112), objs)
+    print("object_frame shape: %s" % objects_frame.shape)
+    objects_frame = np.transpose(objects_frame, (0, 3, 1, 2))
+    with SimpleTimer("extracting embedding for dataset %s" % (dataset.dataset_name)):
+        arcface_classifier = ArcFaceClassifier(args, registered_ids, objects_frame=objects_frame)
+
+    print("store embedding to %s" % (output_path))
+    arcface_classifier.store_embedding_info(output_path)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='face model test')
     parser.add_argument('--image-size', default='112,112', help='')

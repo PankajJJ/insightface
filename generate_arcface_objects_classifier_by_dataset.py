@@ -1,35 +1,35 @@
 import argparse
 import arrow
 
-import numpy as np
 import mxnet as mx
-from eyewitness.image_utils import ImageHandler, Image, resize_and_stack_image_objs
+from eyewitness.image_utils import ImageHandler, Image
 from eyewitness.dataset_util import BboxDataSet
 from eyewitness.image_id import ImageId
 from bistiming import SimpleTimer
 
-from arcface_objects_classifier import ArcFaceClassifier
+from arcface_objects_classifier import ArcFaceClassifier, generate_dataset_arcface_embedding
 from mtcnn_face_detector import MtcnnFaceDetector
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='face model test')
+    parser = argparse.ArgumentParser(description='face model example')
+    # model config
     parser.add_argument('--image-size', default='112,112', help='')
     parser.add_argument('--model', default='models/model-r100-ii/model,0',
                         help='path to load model.')
     parser.add_argument('--gpu', default=0, type=int, help='gpu id')
     parser.add_argument('--mtcnn_path', default='deploy/mtcnn-model/',
                         help='path to load model.')
-    parser.add_argument('--dataset_folder', default='models/183',
+    # dataset, embedding setting
+    parser.add_argument('--dataset_folder', default=None,
                         help='dataset used to registered')
-    parser.add_argument('--preload_model', default=None,
-                        help='pre-generated arcgace embedding')
+    parser.add_argument('--dataset_embedding_path', default='face.pkl',
+                        help='pre-generated arcface embedding')
+    # image used to test
     parser.add_argument('--demo_image', default='demo/183club/test_image2.jpg',
                         help='dataset used to registered')
     parser.add_argument('--drawn_image_path', default='detected_image/demo.jpg',
                         help='the image output path with drawn the detection result')
-    parser.add_argument('--store_embedding_path', default='face.pkl',
-                        help='dataset used to registered')
 
     args = parser.parse_args()
 
@@ -41,30 +41,18 @@ if __name__ == '__main__':
     with SimpleTimer("Loading model %s" % model_name):
         face_detector = MtcnnFaceDetector(args.mtcnn_path, ctx)
 
-    dataset_name = 'faces'
-    faces_dataset = BboxDataSet(args.dataset_folder, dataset_name)
-
-    if args.preload_model is None:
-        objs = []
-        registered_ids = []
-        image_id2_objs = dict(faces_dataset.ground_truth_iterator(testing_set_only=False))
-        for image_obj in faces_dataset.image_obj_iterator(testing_set_only=False):
-            image_bbox_objs = image_id2_objs.get(image_obj.image_id, [])
-            objs += image_obj.fetch_bbox_pil_objs(image_bbox_objs)
-            registered_ids += [bbox.label for bbox in image_bbox_objs]
-
-        objects_frame = resize_and_stack_image_objs((112, 112), objs)
-        print(objects_frame.shape)
-        objects_frame = np.transpose(objects_frame, (0, 3, 1, 2))
-
-        arcface_classifier = ArcFaceClassifier(args, registered_ids, objects_frame=objects_frame)
-        arcface_classifier.store_embedding_info(args.store_embedding_path)
-        embedding, _ = ArcFaceClassifier.restore_embedding_info(args.store_embedding_path)
+    if args.dataset_folder is not None:
+        dataset_name = 'faces'
+        faces_dataset = BboxDataSet(args.dataset_folder, dataset_name)
+        generate_dataset_arcface_embedding(args, faces_dataset, args.dataset_embedding_path)
+        embedding, registered_ids = ArcFaceClassifier.restore_embedding_info(
+            args.dataset_embedding_path)
         print("restored embedding shape", embedding.shape)
     else:
         embedding, registered_ids = ArcFaceClassifier.restore_embedding_info(args.preload_model)
-        arcface_classifier = ArcFaceClassifier(args, registered_ids,
-                                               registered_images_embedding=embedding)
+
+    arcface_classifier = ArcFaceClassifier(args, registered_ids,
+                                           registered_images_embedding=embedding)
 
     raw_image_path = args.demo_image
     if raw_image_path:
