@@ -4,11 +4,52 @@ import arrow
 import mxnet as mx
 from eyewitness.image_utils import ImageHandler, Image
 from eyewitness.dataset_util import BboxDataSet
+from eyewitness.object_detector import ObjectDetector
+from eyewitness.detection_utils import DetectionResult
 from eyewitness.image_id import ImageId
 from bistiming import SimpleTimer
 
 from arcface_objects_classifier import ArcFaceClassifier, generate_dataset_arcface_embedding
 from mtcnn_face_detector import MtcnnFaceDetector
+
+
+class MtcnnArcFaceClassifier(ObjectDetector):
+    def __init__(self, args):
+        if args.gpu > 0:
+            ctx = mx.gpu(args.gpu)
+        else:
+            ctx = mx.cpu(0)
+        model_name = 'MTCNN'
+        with SimpleTimer("Loading model %s" % model_name):
+            self.face_detector = MtcnnFaceDetector(args.mtcnn_path, ctx)
+
+        embedding, registered_ids = ArcFaceClassifier.restore_embedding_info(
+            args.dataset_embedding_path)
+
+        self.valid_labels = set(i for i in registered_ids)
+        self.arcface_classifier = ArcFaceClassifier(
+            args, registered_ids, registered_images_embedding=embedding)
+
+    def detect(self, image_obj):
+        detected_objects = []
+
+        with SimpleTimer("Detect face with mtcnn"):
+            face_detection_result = self.face_detector.detect(image_obj)
+
+        with SimpleTimer("classify faces with arcface"):
+            detection_result = self.arcface_classifier.detect(
+                image_obj, face_detection_result.detected_objects)
+
+        image_dict = {
+            'image_id': image_obj.image_id,
+            'detected_objects': detected_objects,
+        }
+        detection_result = DetectionResult(image_dict)
+        return detection_result
+
+    @property
+    def valid_labels(self):
+        return self.valid_labels
 
 
 if __name__ == '__main__':
@@ -33,38 +74,18 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    if args.gpu > 0:
-        ctx = mx.gpu(args.gpu)
-    else:
-        ctx = mx.cpu(0)
-    model_name = 'MTCNN'
-    with SimpleTimer("Loading model %s" % model_name):
-        face_detector = MtcnnFaceDetector(args.mtcnn_path, ctx)
-
     if args.dataset_folder is not None:
         dataset_name = 'faces'
         faces_dataset = BboxDataSet(args.dataset_folder, dataset_name)
         generate_dataset_arcface_embedding(args, faces_dataset, args.dataset_embedding_path)
-        embedding, registered_ids = ArcFaceClassifier.restore_embedding_info(
-            args.dataset_embedding_path)
-        print("restored embedding shape", embedding.shape)
-    else:
-        embedding, registered_ids = ArcFaceClassifier.restore_embedding_info(
-            args.dataset_embedding_path)
 
-    arcface_classifier = ArcFaceClassifier(args, registered_ids,
-                                           registered_images_embedding=embedding)
+    mtcnn_arcface_classifier = MtcnnArcFaceClassifier(args)
 
     raw_image_path = args.demo_image
     if raw_image_path:
         test_image_id = ImageId(channel='demo', timestamp=arrow.now().timestamp, file_format='jpg')
         test_image_obj = Image(test_image_id, raw_image_path=raw_image_path)
-
-        face_detection_result = face_detector.detect(test_image_obj)
-        with SimpleTimer("Predicting image with classifier"):
-            detection_result = arcface_classifier.detect(
-                test_image_obj, face_detection_result.detected_objects)
-
+        detection_result = mtcnn_arcface_classifier.detect(test_image_obj)
         if args.drawn_image_path:
             ImageHandler.draw_bbox(test_image_obj.pil_image_obj, detection_result.detected_objects)
             ImageHandler.save(test_image_obj.pil_image_obj, args.drawn_image_path)
