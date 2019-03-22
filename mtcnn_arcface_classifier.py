@@ -5,6 +5,7 @@ import mxnet as mx
 from eyewitness.image_utils import ImageHandler, Image
 from eyewitness.dataset_util import BboxDataSet
 from eyewitness.object_detector import ObjectDetector
+from eyewitness.detection_utils import DetectionResult
 from eyewitness.image_id import ImageId
 from bistiming import SimpleTimer
 
@@ -32,10 +33,16 @@ class MtcnnArcFaceClassifier(ObjectDetector):
     def detect(self, image_obj):
         with SimpleTimer("Detect face with mtcnn"):
             face_detection_result = self.face_detector.detect(image_obj)
-
-        with SimpleTimer("classify faces with arcface"):
-            detection_result = self.arcface_classifier.detect(
-                image_obj, face_detection_result.detected_objects)
+        if face_detection_result.detected_objects:
+            with SimpleTimer("classify faces with arcface"):
+                detection_result = self.arcface_classifier.detect(
+                    image_obj, face_detection_result.detected_objects)
+        else:
+            image_dict = {
+                'image_id': image_obj.image_id,
+                'detected_objects': [],
+            }
+            detection_result = DetectionResult(image_dict)
         return detection_result
 
     @property
