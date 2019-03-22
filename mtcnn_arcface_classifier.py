@@ -5,7 +5,6 @@ import mxnet as mx
 from eyewitness.image_utils import ImageHandler, Image
 from eyewitness.dataset_util import BboxDataSet
 from eyewitness.object_detector import ObjectDetector
-from eyewitness.detection_utils import DetectionResult
 from eyewitness.image_id import ImageId
 from bistiming import SimpleTimer
 
