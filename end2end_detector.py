@@ -27,16 +27,9 @@ parser.add_argument('--mtcnn_path', default='deploy/mtcnn-model/',
 parser.add_argument('--dataset_embedding_path', default='face.pkl',
                     help='pre-generated arcface embedding')
 
-# eyewitness flask wrapper setting
+# end2end setting
 parser.add_argument('--db_path', type=str, default='::memory::',
                     help='the path used to store detection result records')
-parser.add_argument('--detector_host', type=str,
-                    default='localhost', help='the ip address of detector')
-parser.add_argument('--detector_port', type=int, default=5566, help='the port of detector port')
-parser.add_argument('--drawn_image_dir', type=str, default=None,
-                    help='the path used to store drawn images')
-
-# end2end setting
 parser.add_argument('--interval_s', type=int, default=3, help='the interval of image generation')
 parser.add_argument('--raw_image_folder', type=str, default=None,
                     help='store raw image to folder if given')
