@@ -20,16 +20,18 @@ parser.add_argument('--model', default='models/model-r100-ii/model,0',
 parser.add_argument('--gpu', default=0, type=int, help='gpu id')
 parser.add_argument('--mtcnn_path', default='deploy/mtcnn-model/',
                     help='path to load model.')
-# dataset, embedding setting
-parser.add_argument('--dataset_folder', default=None,
-                    help='dataset used to registered')
+# embedding setting
 parser.add_argument('--dataset_embedding_path', default='face.pkl',
                     help='pre-generated arcface embedding')
-# image used to test
-parser.add_argument('--demo_image', default='demo/183club/test_image2.jpg',
-                    help='dataset used to registered')
-parser.add_argument('--drawn_image_path', default='detected_image/demo.jpg',
-                    help='the image output path with drawn the detection result')
+
+# eyewitness flask wrapper setting
+parser.add_argument('--db_path', type=str, default='::memory::',
+                    help='the path used to store detection result records')
+parser.add_argument('--detector_host', type=str,
+                    default='localhost', help='the ip address of detector')
+parser.add_argument('--detector_port', type=int, default=5566, help='the port of detector port')
+parser.add_argument('--drawn_image_dir', type=str, default=None,
+                    help='the path used to store drawn images')
 
 
 def image_url_handler(drawn_image_path):
