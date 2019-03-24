@@ -14,7 +14,7 @@ from mtcnn_face_detector import MtcnnFaceDetector
 
 
 class MtcnnArcFaceClassifier(ObjectDetector):
-    def __init__(self, args):
+    def __init__(self, args, registered_ids_trans=None, similarity_threshold=0.40):
         if args.gpu > 0:
             ctx = mx.gpu(args.gpu)
         else:
@@ -25,10 +25,14 @@ class MtcnnArcFaceClassifier(ObjectDetector):
 
         embedding, registered_ids = ArcFaceClassifier.restore_embedding_info(
             args.dataset_embedding_path)
+        if registered_ids_trans is not None:
+            self.registered_ids = [registered_ids_trans[i] for i in registered_ids]
+        else:
+            self.registered_ids = registered_ids
 
-        self.registered_ids = registered_ids
         self.arcface_classifier = ArcFaceClassifier(
-            args, registered_ids, registered_images_embedding=embedding)
+            args, self.registered_ids, registered_images_embedding=embedding,
+            threshold=similarity_threshold)
 
     def detect(self, image_obj):
         with SimpleTimer("Detect face with mtcnn"):
