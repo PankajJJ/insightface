@@ -36,7 +36,7 @@ def get_model(ctx, image_size, model_str, layer):
 class FaceModel:
     def __init__(self, args):
         self.args = args
-        if args.gpu > 0:
+        if args.gpu >= 0:
             ctx = mx.gpu(args.gpu)
         else:
             ctx = mx.cpu(0)
