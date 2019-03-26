@@ -63,7 +63,7 @@ def line_detection_result_filter(detection_result):
 if __name__ == '__main__':
     logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
     args = parser.parse_args()
-    detection_threshold = 0.7
+    detection_threshold = 0.0
     # object detector
     object_detector = MtcnnArcFaceClassifier(args)
 
