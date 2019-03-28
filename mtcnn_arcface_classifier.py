@@ -15,7 +15,7 @@ from mtcnn_face_detector import MtcnnFaceDetector
 
 class MtcnnArcFaceClassifier(ObjectDetector):
     def __init__(self, args, registered_ids_trans=None, similarity_threshold=0.40):
-        if args.gpu > 0:
+        if args.gpu >= 0:
             ctx = mx.gpu(args.gpu)
         else:
             ctx = mx.cpu(0)
