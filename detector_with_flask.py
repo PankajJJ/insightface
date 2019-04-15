@@ -57,7 +57,7 @@ def line_detection_result_filter(detection_result):
     """
     used to check if sent notification or not
     """
-    return any(i.label == 'person' for i in detection_result.detected_objects)
+    return True
 
 
 if __name__ == '__main__':
@@ -81,7 +81,6 @@ if __name__ == '__main__':
         line_annotation_sender = LineAnnotationSender(
             channel_access_token=channel_access_token,
             image_url_handler=image_url_handler,
-            raw_image_url_handler=raw_image_url_handler,
             detection_result_filter=line_detection_result_filter,
             detection_method=BBOX,
             update_audience_period=10,
