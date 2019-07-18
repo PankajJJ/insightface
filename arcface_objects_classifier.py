@@ -11,6 +11,7 @@ from eyewitness.image_utils import ImageHandler, Image
 from eyewitness.object_classifier import ObjectClassifier
 from eyewitness.detection_utils import DetectionResult
 from bistiming import SimpleTimer
+from dchunk import chunk_with_index
 
 from deploy import face_model
 
@@ -33,29 +34,29 @@ class ArcFaceClassifier(ObjectClassifier):
         self.threshold = threshold
         self.unknown = 'unknown'
 
-    def detect(self, image_obj, bbox_objs=None):
-        if bbox_objs:
-            objs = image_obj.fetch_bbox_pil_objs(bbox_objs)
-            objects_frame = resize_and_stack_image_objs(self.image_size, objs)
-        else:
+    def detect(self, image_obj, bbox_objs=None, batch_size=2):
+        if bbox_objs is None:
             x2, y2 = image_obj.pil_image_obj.size
             bbox_objs = [BoundedBoxObject(0, 0, x2, y2, '', 0, '')]
-            # resize and extend the size
-            objects_frame = np.array(image_obj.pil_image_obj.resize(self.image_size))
-            objects_frame = np.expand_dims(objects_frame, axis=0)
 
-        objects_frame = np.transpose(objects_frame, (0, 3, 1, 2))
-        objects_embedding = self.model.get_faces_feature(objects_frame)
-        similar_matrix = objects_embedding.dot(self.registered_images_embedding.T)
-        detected_idx = similar_matrix.argmax(1)
+        n_bbox = len(bbox_objs)
         result_objects = []
-        for idx, bbox in enumerate(bbox_objs):
-            x1, y1, x2, y2, _, _, _ = bbox
-            label = self.registered_ids[detected_idx[idx]]
-            score = similar_matrix[idx, detected_idx[idx]]
-            if score < self.threshold:
-                label = self.unknown
-            result_objects.append(BoundedBoxObject(x1, y1, x2, y2, label, score, ''))
+        for row_idx, batch_start, batch_end in chunk_with_index(range(n_bbox), batch_size):
+            batch_bbox_objs = bbox_objs[batch_start:batch_end]
+            objs = image_obj.fetch_bbox_pil_objs(batch_bbox_objs)
+            objects_frame = resize_and_stack_image_objs(self.image_size, objs)
+            objects_frame = np.transpose(objects_frame, (0, 3, 1, 2))
+            objects_embedding = self.model.get_faces_feature(objects_frame)
+            similar_matrix = objects_embedding.dot(self.registered_images_embedding.T)
+            detected_idx = similar_matrix.argmax(1)
+
+            for idx, bbox in enumerate(batch_bbox_objs):
+                x1, y1, x2, y2, _, _, _ = bbox
+                label = self.registered_ids[detected_idx[idx]]
+                score = similar_matrix[idx, detected_idx[idx]]
+                if score < self.threshold:
+                    label = self.unknown
+                result_objects.append(BoundedBoxObject(x1, y1, x2, y2, label, score, ''))
 
         image_dict = {
             'image_id': image_obj.image_id,
