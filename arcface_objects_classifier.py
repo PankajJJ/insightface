@@ -10,6 +10,7 @@ from eyewitness.image_id import ImageId
 from eyewitness.image_utils import ImageHandler, Image
 from eyewitness.object_classifier import ObjectClassifier
 from eyewitness.detection_utils import DetectionResult
+from eyewitness.config import DATASET_ALL
 from bistiming import SimpleTimer
 from dchunk import chunk_with_index
 
@@ -21,14 +22,21 @@ LOG = logging.getLogger(__name__)
 class ArcFaceClassifier(ObjectClassifier):
     def __init__(self, args, registered_ids,
                  objects_frame=None, registered_images_embedding=None,
-                 threshold=0.0):
+                 threshold=0.0, batch_size=20):
         assert objects_frame is not None or registered_images_embedding is not None
         self.model = face_model.FaceModel(args)
         self.image_size = [int(i) for i in args.image_size.split(',')]
         if registered_images_embedding is not None:
             self.registered_images_embedding = registered_images_embedding
         else:
-            self.registered_images_embedding = self.model.get_faces_feature(objects_frame)
+            n_images = objects_frame.shape[0]
+            registered_images_embedding_list = []
+            for row_idx, batch_start, batch_end in chunk_with_index(range(n_images), batch_size):
+                objects_embedding = self.model.get_faces_feature(
+                    objects_frame[batch_start: batch_end])
+                registered_images_embedding_list.append(objects_embedding)
+            self.registered_images_embedding = np.concatenate(registered_images_embedding_list)
+
         LOG.info("registered_images_embedding shape: %s", self.registered_images_embedding.shape)
         self.registered_ids = registered_ids
         self.threshold = threshold
@@ -81,11 +89,10 @@ class ArcFaceClassifier(ObjectClassifier):
 def generate_dataset_arcface_embedding(args, dataset, output_path):
     objs = []
     registered_ids = []
-    image_id2_objs = dict(dataset.ground_truth_iterator(testing_set_only=False))
-    for image_obj in dataset.image_obj_iterator(testing_set_only=False):
-        image_bbox_objs = image_id2_objs.get(image_obj.image_id, [])
-        objs += image_obj.fetch_bbox_pil_objs(image_bbox_objs)
-        registered_ids += [bbox.label for bbox in image_bbox_objs]
+    # image_id2_objs = dict(dataset.ground_truth_iterator(testing_set_only=False))
+    for image_obj, gt_objs in dataset.dataset_iterator(mode=DATASET_ALL, with_gt_objs=True):
+        objs += image_obj.fetch_bbox_pil_objs(gt_objs)
+        registered_ids += [bbox.label for bbox in gt_objs]
 
     objects_frame = resize_and_stack_image_objs((112, 112), objs)
     print("object_frame shape:", objects_frame.shape)
