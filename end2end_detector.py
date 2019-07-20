@@ -94,13 +94,13 @@ class ChuangmiPowerPlugHandler(DetectionResultHandler):
             i for i in detection_result.detected_objects if i.label != 'unknown']
         if valid_detected_users:
             print("valid_users: %s, lets postone the power_cut_timestamp for 30s"
-                  % valid_detected_users)
-            if self.is_prounce:
-                for user in valid_detected_users:
-                    prounce_zh_text(user.label)
+                  % [user.label for user in valid_detected_users])
             self.power_cut_timestamp = arrow.now().timestamp + 30
             if not self.power.status().is_on:
                 self.power.on()
+                if self.is_prounce:
+                    for user in valid_detected_users:
+                        prounce_zh_text(user.label)
         else:
             if self.power.status().is_on:
                 if arrow.now().timestamp > self.power_cut_timestamp:
