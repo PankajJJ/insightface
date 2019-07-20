@@ -1,6 +1,7 @@
 import argparse
 import os
 import time
+import tempfile
 
 import arrow
 import cv2
@@ -14,6 +15,7 @@ from eyewitness.result_handler.line_detection_result_handler import LineAnnotati
 from eyewitness.detection_utils import DetectionResultHandler
 from miio.powerstrip import PowerStrip
 from peewee import SqliteDatabase
+from gtts import gTTS
 
 from mtcnn_arcface_classifier import MtcnnArcFaceClassifier
 
@@ -43,8 +45,22 @@ parser.add_argument('--chuang_mi_power_token', type=str, default='',
                     help='the chuang_mi power token')
 
 
+# prounce the detected users
+parser.add_argument('--is_prounce', default=True, type=bool, help='prounce the detected_users')
+
+
+def prounce_zh_text(text):
+    language = 'zh-tw'
+    with tempfile.TemporaryDirectory() as local_folder:
+        myobj = gTTS(text=text, lang=language, slow=False)
+        destination_path = os.path.join(local_folder, "tmp.mp3")
+        myobj.save(destination_path)
+        # it's quite dirty, but work
+        os.system("mpg321 %s" % destination_path)
+
+
 class ChuangmiPowerPlugHandler(DetectionResultHandler):
-    def __init__(self, ip, token):
+    def __init__(self, ip, token, is_prounce=True):
         """
         Parameters
         ----------
@@ -54,6 +70,7 @@ class ChuangmiPowerPlugHandler(DetectionResultHandler):
         self.power = PowerStrip(ip=ip, token=token)
         self.power_cut_timestamp = arrow.now().timestamp
         self.postpone_seconds = 30
+        self.is_prounce = is_prounce
 
     @property
     def detection_method(self):
@@ -76,7 +93,11 @@ class ChuangmiPowerPlugHandler(DetectionResultHandler):
         valid_detected_users = [
             i for i in detection_result.detected_objects if i.label != 'unknown']
         if valid_detected_users:
-            print("there are valid_users, lets postone the power_cut_timestamp")
+            print("valid_users: %s, lets postone the power_cut_timestamp for 30s"
+                  % valid_detected_users)
+            if self.is_prounce:
+                for user in valid_detected_users:
+                    prounce_zh_text(user.label)
             self.power_cut_timestamp = arrow.now().timestamp + 30
             if not self.power.status().is_on:
                 self.power.on()
@@ -142,7 +163,8 @@ if __name__ == '__main__':
 
     if args.chuang_mi_power_ip:
         result_handlers.append(
-            ChuangmiPowerPlugHandler(args.chuang_mi_power_ip, args.chuang_mi_power_token))
+            ChuangmiPowerPlugHandler(
+                args.chuang_mi_power_ip, args.chuang_mi_power_token, args.is_prounce))
 
     # setup your line channel token and audience
     channel_access_token = os.environ.get('LINE_CHANNEL_ACCESS_TOKEN')
