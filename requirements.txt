@@ -7,3 +7,4 @@ scikit-image
 bistiming
 eyewitness==1.0.13
 dchunk==0.0.1
+python-miio

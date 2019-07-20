@@ -11,6 +11,8 @@ from eyewitness.image_id import ImageId
 from eyewitness.image_utils import (ImageProducer, swap_channel_rgb_bgr, ImageHandler, Image)
 from eyewitness.result_handler.db_writer import BboxPeeweeDbWriter
 from eyewitness.result_handler.line_detection_result_handler import LineAnnotationSender
+from eyewitness.detection_utils import DetectionResultHandler
+from miio.powerstrip import PowerStrip
 from peewee import SqliteDatabase
 
 from mtcnn_arcface_classifier import MtcnnArcFaceClassifier
@@ -33,6 +35,56 @@ parser.add_argument('--db_path', type=str, default='::memory::',
 parser.add_argument('--interval_s', type=int, default=3, help='the interval of image generation')
 parser.add_argument('--raw_image_folder', type=str, default=None,
                     help='store raw image to folder if given')
+
+# chuangmi setting
+parser.add_argument('--chuang_mi_power_ip', type=str, default='',
+                    help='the chuang_mi power ip')
+parser.add_argument('--chuang_mi_power_token', type=str, default='',
+                    help='the chuang_mi power token')
+
+
+class ChuangmiPowerPlugHandler(DetectionResultHandler):
+    def __init__(self, ip, token):
+        """
+        Parameters
+        ----------
+        db_path: str
+            database path
+        """
+        self.power = PowerStrip(ip=ip, token=token)
+        self.power_cut_timestamp = arrow.now().timestamp
+        self.postpone_seconds = 30
+
+    @property
+    def detection_method(self):
+        """str: BBOX"""
+        return BBOX
+
+    def _handle(self, detection_result):
+        """
+        handle detection result, the logic here:
+        1. check if valid_users there(Appier empolyees, and face bigger than a ratio)
+        2. if valid_users there, postpone the watermark for stopping the powerplug
+        2.1 power off if detected result without user, and the time exceed the watermark
+        2.2 power on if now is off and there are detected user
+
+        Parameters
+        ----------
+        detection_result: DetectionResult
+            detection result
+        """
+        valid_detected_users = [
+            i for i in detection_result.detected_objects if i.label != 'unknown']
+        if valid_detected_users:
+            print("there are valid_users, lets postone the power_cut_timestamp")
+            self.power_cut_timestamp = arrow.now().timestamp + 30
+            if not self.power.status().is_on:
+                self.power.on()
+        else:
+            if self.power.status().is_on:
+                if arrow.now().timestamp > self.power_cut_timestamp:
+                    print("timestamp exceeded, cutoff the power")
+                    self.power.off()
 
 
 class InMemoryImageProducer(ImageProducer):
@@ -87,6 +139,10 @@ if __name__ == '__main__':
     database = SqliteDatabase(args.db_path)
     bbox_sqlite_handler = BboxPeeweeDbWriter(database)
     result_handlers.append(bbox_sqlite_handler)
+
+    if args.chuang_mi_power_ip:
+        result_handlers.append(
+            ChuangmiPowerPlugHandler(args.chuang_mi_power_ip, args.chuang_mi_power_token))
 
     # setup your line channel token and audience
     channel_access_token = os.environ.get('LINE_CHANNEL_ACCESS_TOKEN')
