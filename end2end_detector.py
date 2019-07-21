@@ -22,6 +22,7 @@ from mtcnn_arcface_classifier import MtcnnArcFaceClassifier
 parser = argparse.ArgumentParser(description='face model example')
 # model config
 parser.add_argument('--image-size', default='112,112', help='')
+parser.add_argument('--raw-image-size', default='640,480', help='')
 parser.add_argument('--model', default='models/model-r100-ii/model,0',
                     help='path to load model.')
 parser.add_argument('--gpu', default=0, type=int, help='gpu id')
@@ -43,7 +44,8 @@ parser.add_argument('--chuang_mi_power_ip', type=str, default='',
                     help='the chuang_mi power ip')
 parser.add_argument('--chuang_mi_power_token', type=str, default='',
                     help='the chuang_mi power token')
-
+parser.add_argument('--chuang_mi_face_area_threshold',
+                    default=0.3, type=float, help='filter for too small faces')
 
 # prounce the detected users
 parser.add_argument('--is_prounce', default=True, type=bool, help='prounce the detected_users')
@@ -59,8 +61,14 @@ def prounce_zh_text(text):
         os.system("mpg321 %s" % destination_path)
 
 
+def calculate_obj_area(detected_obj):
+    width = detected_obj.x2 - detected_obj.x1
+    height = detected_obj.y2 - detected_obj.y1
+    return width * height
+
+
 class ChuangmiPowerPlugHandler(DetectionResultHandler):
-    def __init__(self, ip, token, is_prounce=True):
+    def __init__(self, ip, token, is_prounce=True, area_threshold=None):
         """
         Parameters
         ----------
@@ -71,6 +79,7 @@ class ChuangmiPowerPlugHandler(DetectionResultHandler):
         self.power_cut_timestamp = arrow.now().timestamp
         self.postpone_seconds = 30
         self.is_prounce = is_prounce
+        self.area_threshold = area_threshold
 
     @property
     def detection_method(self):
@@ -91,8 +100,14 @@ class ChuangmiPowerPlugHandler(DetectionResultHandler):
             detection result
         """
         try:
-            valid_detected_users = [
+            detected_users = [
                 i for i in detection_result.detected_objects if i.label != 'unknown']
+
+            print("detected_users: %s" % [user.label for user in detected_users])
+
+            valid_detected_users = [
+                i for i in detected_users if calculate_obj_area(i) > self.area_threshold]
+
             if valid_detected_users:
                 print("valid_users: %s, lets postone the power_cut_timestamp for 30s"
                       % [user.label for user in valid_detected_users])
@@ -112,11 +127,12 @@ class ChuangmiPowerPlugHandler(DetectionResultHandler):
 
 
 class InMemoryImageProducer(ImageProducer):
-    def __init__(self, video_path, interval_s):
+    def __init__(self, video_path, interval_s, image_size=(640, 480)):
         self.vid = cv2.VideoCapture(video_path)
         self.interval_s = interval_s
         if not self.vid.isOpened():
             raise IOError("Couldn't open webcam or video")
+        self.image_size = image_size
 
     def produce_method(self):
         return IN_MEMORY
@@ -127,7 +143,12 @@ class InMemoryImageProducer(ImageProducer):
             for iter_ in range(5):
                 self.vid.grab()
             _, frame = self.vid.read()
-            yield PIL.Image.fromarray(swap_channel_rgb_bgr(frame))
+            pil_image_obj = PIL.Image.fromarray(swap_channel_rgb_bgr(frame))
+            if pil_image_obj.size == self.image_size:
+                yield pil_image_obj
+            else:
+                yield pil_image_obj.resize(self.image_size)
+
             time.sleep(self.interval_s)
 
 
@@ -150,8 +171,10 @@ def line_detection_result_filter(detection_result):
 if __name__ == '__main__':
     args = parser.parse_args()
     raw_image_folder = args.raw_image_folder
+    raw_image_size = tuple(int(i) for i in args.raw_image_size.split(','))
     # image producer from webcam
-    image_producer = InMemoryImageProducer(0, interval_s=args.interval_s)
+    image_producer = InMemoryImageProducer(
+        0, interval_s=args.interval_s, image_size=raw_image_size)
 
     # object detector
     object_detector = MtcnnArcFaceClassifier(args)
@@ -165,9 +188,14 @@ if __name__ == '__main__':
     result_handlers.append(bbox_sqlite_handler)
 
     if args.chuang_mi_power_ip:
+        # calculate valid_user_thresholds
+        face_area_threshold = (
+            raw_image_size[0] * raw_image_size[1] * args.chuang_mi_face_area_threshold)
+
         result_handlers.append(
             ChuangmiPowerPlugHandler(
-                args.chuang_mi_power_ip, args.chuang_mi_power_token, args.is_prounce))
+                args.chuang_mi_power_ip, args.chuang_mi_power_token, args.is_prounce,
+                face_area_threshold))
 
     # setup your line channel token and audience
     channel_access_token = os.environ.get('LINE_CHANNEL_ACCESS_TOKEN')
