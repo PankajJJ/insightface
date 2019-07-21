@@ -50,10 +50,10 @@ parser.add_argument('--chuang_mi_face_area_threshold',
 
 # pronounce the detected users
 parser.add_argument('--chuang_mi_with_network',
-                    default=True, type=bool, help='pronounce the detected_users')
+                    default=False, type=bool, help='pronounce the detected_users')
 
 parser.add_argument('--chuang_mi_is_pronounce',
-                    default=True, type=bool, help='pronounce the detected_users')
+                    default=False, type=bool, help='pronounce the detected_users')
 
 
 def prounce_zh_text(text):
