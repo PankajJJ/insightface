@@ -40,6 +40,7 @@ parser.add_argument('--raw_image_folder', type=str, default=None,
                     help='store raw image to folder if given')
 
 # chuangmi setting
+
 parser.add_argument('--chuang_mi_power_ip', type=str, default='',
                     help='the chuang_mi power ip')
 parser.add_argument('--chuang_mi_power_token', type=str, default='',
@@ -47,8 +48,12 @@ parser.add_argument('--chuang_mi_power_token', type=str, default='',
 parser.add_argument('--chuang_mi_face_area_threshold',
                     default=0.3, type=float, help='filter for too small faces')
 
-# prounce the detected users
-parser.add_argument('--is_prounce', default=True, type=bool, help='prounce the detected_users')
+# pronounce the detected users
+parser.add_argument('--chuang_mi_with_network',
+                    default=True, type=bool, help='pronounce the detected_users')
+
+parser.add_argument('--chuang_mi_is_pronounce',
+                    default=True, type=bool, help='pronounce the detected_users')
 
 
 def prounce_zh_text(text):
@@ -68,7 +73,7 @@ def calculate_obj_area(detected_obj):
 
 
 class ChuangmiPowerPlugHandler(DetectionResultHandler):
-    def __init__(self, ip, token, is_prounce=True, area_threshold=None):
+    def __init__(self, ip, token, is_pronounce, with_network, area_threshold=None):
         """
         Parameters
         ----------
@@ -78,13 +83,33 @@ class ChuangmiPowerPlugHandler(DetectionResultHandler):
         self.power = PowerStrip(ip=ip, token=token)
         self.power_cut_timestamp = arrow.now().timestamp
         self.postpone_seconds = 30
-        self.is_prounce = is_prounce
+        self.is_pronounce = is_pronounce & with_network
         self.area_threshold = area_threshold
+
+        # if the env without global network, power will return wrong status
+        # thus we need to maintain our own current_status
+        self.with_network = with_network
+        self.current_status = False
+
+    @property
+    def is_on(self):
+        if self.with_network:
+            return self.power.status().is_on
+        else:
+            return self.current_status
 
     @property
     def detection_method(self):
         """str: BBOX"""
         return BBOX
+
+    def on(self):
+        self.power.on()
+        self.current_status = True
+
+    def off(self):
+        self.power.off()
+        self.current_status = False
 
     def _handle(self, detection_result):
         """
@@ -112,16 +137,16 @@ class ChuangmiPowerPlugHandler(DetectionResultHandler):
                 print("valid_users: %s, lets postone the power_cut_timestamp for 30s"
                       % [user.label for user in valid_detected_users])
                 self.power_cut_timestamp = arrow.now().timestamp + 30
-                if not self.power.status().is_on:
-                    self.power.on()
-                    if self.is_prounce:
+                if not self.is_on:
+                    self.on()
+                    if self.is_pronounce:
                         for user in valid_detected_users:
                             prounce_zh_text(user.label)
             else:
-                if self.power.status().is_on:
+                if self.is_on:
                     if arrow.now().timestamp > self.power_cut_timestamp:
                         print("timestamp exceeded, cutoff the power")
-                        self.power.off()
+                        self.off()
         except Exception as e:
             print(e)
 
@@ -194,7 +219,10 @@ if __name__ == '__main__':
 
         result_handlers.append(
             ChuangmiPowerPlugHandler(
-                args.chuang_mi_power_ip, args.chuang_mi_power_token, args.is_prounce,
+                args.chuang_mi_power_ip,
+                args.chuang_mi_power_token,
+                args.chuang_mi_is_pronounce,
+                args.chuang_mi_with_network,
                 face_area_threshold))
 
     # setup your line channel token and audience
