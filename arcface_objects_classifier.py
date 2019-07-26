@@ -1,6 +1,7 @@
 import argparse
 import pickle
 import logging
+from pathlib import Path
 
 import arrow
 import numpy as np
@@ -82,8 +83,30 @@ class ArcFaceClassifier(ObjectClassifier):
 
     @staticmethod
     def restore_embedding_info(pkl_path):
-        with open(pkl_path, 'rb') as f:
-            return pickle.load(f)
+        pkl_path_obj = Path(pkl_path)
+        if not pkl_path_obj.exists():
+            raise Exception('path %s not exist' % pkl_path_obj)
+
+        if pkl_path_obj.is_dir():
+            pkls = pkl_path_obj.glob('*.pkl')
+            all_face_embedding_list = []
+            all_face_ids = []
+            for pkl in pkls:
+                with open(str(pkl), 'rb') as f:
+                    face_embedding, face_ids = pickle.load(f)
+                    if face_embedding.shape[0] != len(face_ids):
+                        LOG.warn('the pkl %s, without same shape embedding and face ids', pkl)
+                        continue
+                    all_face_ids.extend(face_ids)
+                    all_face_embedding_list.append(face_embedding)
+
+            all_face_embedding = np.concatenate(all_face_embedding_list)
+            assert all_face_embedding.shape[0] == len(all_face_ids)
+
+            return all_face_embedding, all_face_ids
+        else:
+            with open(str(pkl_path), 'rb') as f:
+                return pickle.load(f)
 
 
 def generate_dataset_arcface_embedding(args, dataset, output_path):
