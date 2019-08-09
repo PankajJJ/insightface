@@ -10,10 +10,11 @@ from eyewitness.image_id import ImageId
 
 from eyewitness.image_utils import (ImageProducer, swap_channel_rgb_bgr, ImageHandler, Image)
 from eyewitness.result_handler.db_writer import BboxPeeweeDbWriter
-from eyewitness.result_handler.line_detection_result_handler import LineAnnotationSender
 from peewee import SqliteDatabase
 
 from mtcnn_arcface_classifier import MtcnnArcFaceClassifier
+from line_detection_result_handler import LineAnnotationSender
+
 
 parser = argparse.ArgumentParser(description='face model example')
 # model config

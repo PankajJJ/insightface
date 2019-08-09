@@ -6,10 +6,11 @@ from eyewitness.flask_server import BboxObjectDetectionFlaskWrapper
 from eyewitness.config import BBOX
 from eyewitness.detection_result_filter import FeedbackBboxDeNoiseFilter
 from eyewitness.result_handler.db_writer import BboxPeeweeDbWriter
-from eyewitness.result_handler.line_detection_result_handler import LineAnnotationSender
 from peewee import SqliteDatabase
 
 from mtcnn_arcface_classifier import MtcnnArcFaceClassifier
+from line_detection_result_handler import LineAnnotationSender
+
 
 
 parser = argparse.ArgumentParser(description='face model example')
