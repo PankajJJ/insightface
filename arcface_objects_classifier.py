@@ -1,6 +1,7 @@
 import argparse
 import pickle
 import logging
+from pathlib import Path
 
 import arrow
 import numpy as np
@@ -10,7 +11,9 @@ from eyewitness.image_id import ImageId
 from eyewitness.image_utils import ImageHandler, Image
 from eyewitness.object_classifier import ObjectClassifier
 from eyewitness.detection_utils import DetectionResult
+from eyewitness.config import DATASET_ALL
 from bistiming import SimpleTimer
+from dchunk import chunk_with_index
 
 from deploy import face_model
 
@@ -20,42 +23,49 @@ LOG = logging.getLogger(__name__)
 class ArcFaceClassifier(ObjectClassifier):
     def __init__(self, args, registered_ids,
                  objects_frame=None, registered_images_embedding=None,
-                 threshold=0.0):
+                 threshold=0.0, batch_size=20):
         assert objects_frame is not None or registered_images_embedding is not None
         self.model = face_model.FaceModel(args)
         self.image_size = [int(i) for i in args.image_size.split(',')]
         if registered_images_embedding is not None:
             self.registered_images_embedding = registered_images_embedding
         else:
-            self.registered_images_embedding = self.model.get_faces_feature(objects_frame)
+            n_images = objects_frame.shape[0]
+            registered_images_embedding_list = []
+            for row_idx, batch_start, batch_end in chunk_with_index(range(n_images), batch_size):
+                objects_embedding = self.model.get_faces_feature(
+                    objects_frame[batch_start: batch_end])
+                registered_images_embedding_list.append(objects_embedding)
+            self.registered_images_embedding = np.concatenate(registered_images_embedding_list)
+
         LOG.info("registered_images_embedding shape: %s", self.registered_images_embedding.shape)
         self.registered_ids = registered_ids
         self.threshold = threshold
         self.unknown = 'unknown'
 
-    def detect(self, image_obj, bbox_objs=None):
-        if bbox_objs:
-            objs = image_obj.fetch_bbox_pil_objs(bbox_objs)
-            objects_frame = resize_and_stack_image_objs(self.image_size, objs)
-        else:
+    def detect(self, image_obj, bbox_objs=None, batch_size=2):
+        if bbox_objs is None:
             x2, y2 = image_obj.pil_image_obj.size
             bbox_objs = [BoundedBoxObject(0, 0, x2, y2, '', 0, '')]
-            # resize and extend the size
-            objects_frame = np.array(image_obj.pil_image_obj.resize(self.image_size))
-            objects_frame = np.expand_dims(objects_frame, axis=0)
 
-        objects_frame = np.transpose(objects_frame, (0, 3, 1, 2))
-        objects_embedding = self.model.get_faces_feature(objects_frame)
-        similar_matrix = objects_embedding.dot(self.registered_images_embedding.T)
-        detected_idx = similar_matrix.argmax(1)
+        n_bbox = len(bbox_objs)
         result_objects = []
-        for idx, bbox in enumerate(bbox_objs):
-            x1, y1, x2, y2, _, _, _ = bbox
-            label = self.registered_ids[detected_idx[idx]]
-            score = similar_matrix[idx, detected_idx[idx]]
-            if score < self.threshold:
-                label = self.unknown
-            result_objects.append(BoundedBoxObject(x1, y1, x2, y2, label, score, ''))
+        for row_idx, batch_start, batch_end in chunk_with_index(range(n_bbox), batch_size):
+            batch_bbox_objs = bbox_objs[batch_start:batch_end]
+            objs = image_obj.fetch_bbox_pil_objs(batch_bbox_objs)
+            objects_frame = resize_and_stack_image_objs(self.image_size, objs)
+            objects_frame = np.transpose(objects_frame, (0, 3, 1, 2))
+            objects_embedding = self.model.get_faces_feature(objects_frame)
+            similar_matrix = objects_embedding.dot(self.registered_images_embedding.T)
+            detected_idx = similar_matrix.argmax(1)
+
+            for idx, bbox in enumerate(batch_bbox_objs):
+                x1, y1, x2, y2, _, _, _ = bbox
+                label = self.registered_ids[detected_idx[idx]]
+                score = similar_matrix[idx, detected_idx[idx]]
+                if score < self.threshold:
+                    label = self.unknown
+                result_objects.append(BoundedBoxObject(x1, y1, x2, y2, label, score, ''))
 
         image_dict = {
             'image_id': image_obj.image_id,
@@ -73,18 +83,39 @@ class ArcFaceClassifier(ObjectClassifier):
 
     @staticmethod
     def restore_embedding_info(pkl_path):
-        with open(pkl_path, 'rb') as f:
-            return pickle.load(f)
+        pkl_path_obj = Path(pkl_path)
+        if not pkl_path_obj.exists():
+            raise Exception('path %s not exist' % pkl_path_obj)
+
+        if pkl_path_obj.is_dir():
+            pkls = pkl_path_obj.glob('*.pkl')
+            all_face_embedding_list = []
+            all_face_ids = []
+            for pkl in pkls:
+                with open(str(pkl), 'rb') as f:
+                    face_embedding, face_ids = pickle.load(f)
+                    if face_embedding.shape[0] != len(face_ids):
+                        LOG.warn('the pkl %s, without same shape embedding and face ids', pkl)
+                        continue
+                    all_face_ids.extend(face_ids)
+                    all_face_embedding_list.append(face_embedding)
+
+            all_face_embedding = np.concatenate(all_face_embedding_list)
+            assert all_face_embedding.shape[0] == len(all_face_ids)
+
+            return all_face_embedding, all_face_ids
+        else:
+            with open(str(pkl_path), 'rb') as f:
+                return pickle.load(f)
 
 
 def generate_dataset_arcface_embedding(args, dataset, output_path):
     objs = []
     registered_ids = []
-    image_id2_objs = dict(dataset.ground_truth_iterator(testing_set_only=False))
-    for image_obj in dataset.image_obj_iterator(testing_set_only=False):
-        image_bbox_objs = image_id2_objs.get(image_obj.image_id, [])
-        objs += image_obj.fetch_bbox_pil_objs(image_bbox_objs)
-        registered_ids += [bbox.label for bbox in image_bbox_objs]
+    # image_id2_objs = dict(dataset.ground_truth_iterator(testing_set_only=False))
+    for image_obj, gt_objs in dataset.dataset_iterator(mode=DATASET_ALL, with_gt_objs=True):
+        objs += image_obj.fetch_bbox_pil_objs(gt_objs)
+        registered_ids += [bbox.label for bbox in gt_objs]
 
     objects_frame = resize_and_stack_image_objs((112, 112), objs)
     print("object_frame shape:", objects_frame.shape)
