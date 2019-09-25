@@ -31,11 +31,13 @@ class FaceModelWithTRT(object):
         # lazy load implementation
         if self.engine is None:
             self.build()
-
-        self.inputs[0].host = np.array(objects_frame, dtype=np.float32, order='C')
+        batch_size = objects_frame.shape[0]
+        allocate_place = np.prod(objects_frame.shape)
+        self.inputs[0].host[:allocate_place] = objects_frame.flatten(order='C').astype(np.float32)
         trt_outputs = common.do_inference(
             self.context, bindings=self.bindings,
-            inputs=self.inputs, outputs=self.outputs, stream=self.stream)
-        
-        embeddings = preprocessing.normalize(trt_outputs)
+            inputs=self.inputs, outputs=self.outputs, stream=self.stream, batch_size=batch_size)
+        embeddings = trt_outputs[0].reshape(-1, 512)
+        embeddings = embeddings[:batch_size]
+        embeddings = preprocessing.normalize(embeddings)
         return embeddings
