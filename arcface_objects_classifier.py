@@ -15,7 +15,8 @@ from eyewitness.config import DATASET_ALL
 from bistiming import SimpleTimer
 from dchunk import chunk_with_index
 
-from deploy import face_model
+from deploy.face_model import FaceModel
+from face_model_trt import FaceModelWithTRT
 
 LOG = logging.getLogger(__name__)
 
@@ -25,7 +26,10 @@ class ArcFaceClassifier(ObjectClassifier):
                  objects_frame=None, registered_images_embedding=None,
                  threshold=0.0, batch_size=20):
         assert objects_frame is not None or registered_images_embedding is not None
-        self.model = face_model.FaceModel(args)
+        if args.is_trt_engine:
+            self.model = FaceModelWithTRT(args)
+        else:
+            self.model = FaceModel(args)
         self.image_size = [int(i) for i in args.image_size.split(',')]
         if registered_images_embedding is not None:
             self.registered_images_embedding = registered_images_embedding
@@ -43,7 +47,7 @@ class ArcFaceClassifier(ObjectClassifier):
         self.threshold = threshold
         self.unknown = 'unknown'
 
-    def detect(self, image_obj, bbox_objs=None, batch_size=2):
+    def detect(self, image_obj, bbox_objs=None, batch_size=1):
         if bbox_objs is None:
             x2, y2 = image_obj.pil_image_obj.size
             bbox_objs = [BoundedBoxObject(0, 0, x2, y2, '', 0, '')]
@@ -133,6 +137,7 @@ if __name__ == '__main__':
     parser.add_argument('--model', default='models/model-r100-ii/model,0',
                         help='path to load model.')
     parser.add_argument('--gpu', default=0, type=int, help='gpu id')
+    parser.add_argument('--is_trt_engine', default=False, action='store_true')
 
     args = parser.parse_args()
 

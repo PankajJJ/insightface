@@ -17,6 +17,7 @@ parser.add_argument('--model', default='models/model-r100-ii/model,0', help='')
 parser.add_argument('--mtcnn_path', default='deploy/mtcnn-model/',
                     help='path to load model.')
 parser.add_argument('--gpu', default=0, type=int, help='gpu id')
+parser.add_argument('--is_trt_engine', default=False, action='store_true')
 
 if __name__ == '__main__':
     args = parser.parse_args()
