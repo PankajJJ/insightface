@@ -7,6 +7,8 @@ from eyewitness.image_id import ImageId
 from eyewitness.image_utils import ImageHandler, Image, resize_and_stack_image_objs
 from eyewitness.config import BoundedBoxObject
 from bistiming import SimpleTimer
+import pycuda.driver as cuda  # noqa, must be imported
+import pycuda.autoinit  # noqa, must be imported
 
 from arcface_objects_classifier import ArcFaceClassifier
 from mtcnn_face_detector import MtcnnFaceDetector
@@ -47,18 +49,21 @@ if __name__ == '__main__':
     objects_frame = np.transpose(objects_frame, (0, 3, 1, 2))
     registered_ids = [i.label for i in register_image_bbox_objs]
 
-    model_name = 'Arcface'
-    with SimpleTimer("Loading model %s" % model_name):
-        arcface_classifier = ArcFaceClassifier(args, registered_ids, objects_frame=objects_frame)
-
     raw_image_path = 'demo/183club/test_image2.jpg'
     test_image_id = ImageId(channel='demo', timestamp=arrow.now().timestamp, file_format='jpg')
     test_image_obj = Image(test_image_id, raw_image_path=raw_image_path)
-
     face_detection_result = face_detector.detect(test_image_obj)
+
+    model_name = 'Arcface'
+    # beaware that if you load mtcnn mx model after the trt arcface model which might lead to a 
+    # Cuda Error in execute: 400 (invalid resource handle) error, thus I move the model lazy load 
+    # to lead end here.
+    with SimpleTimer("Loading model %s" % model_name):
+        arcface_classifier = ArcFaceClassifier(
+            args, registered_ids, objects_frame=objects_frame, batch_size=1)
     with SimpleTimer("Predicting image with classifier"):
         detection_result = arcface_classifier.detect(
-            test_image_obj, face_detection_result.detected_objects)
+            test_image_obj, face_detection_result.detected_objects, batch_size=1)
 
     ImageHandler.draw_bbox(train_image_obj.pil_image_obj, register_image_bbox_objs)
     ImageHandler.save(train_image_obj.pil_image_obj, "detected_image/183club/drawn_image_1.jpg")
